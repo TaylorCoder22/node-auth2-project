@@ -19,11 +19,11 @@ const restricted = (req, res, next) => {
   */
  const token = req.header.authorization
  if(!token){
-   res.status(401).json({message: 'token required'})
+   res.status(401).json({message: 'Token required'})
  }else{
    jwt.verify(token, JWT_SECRET, (err, decoded) => {
      if(err){
-       res.status(401).json('token invalid', err.message)
+       res.status(401).json('Token invalid', err.message)
      }else{
        req.decodedToken = decoded
        next()
@@ -49,6 +49,14 @@ const only = role_name => (req, res, next) => {
  }else{
    next({status: 403, message: 'This is not for you'})
  }
+}
+
+const checkPayload = (req, res, next) => {
+  if(!req.body.username || req.body.password){
+    res.status(401).json('username and passwrod required')
+  }else{
+    next()
+  }
 }
 
 const checkUsernameExists = async (req, res, next) => {
@@ -107,6 +115,7 @@ const validateRoleName = (req, res, next) => {
 
 module.exports = {
   restricted,
+  checkPayload,
   checkUsernameExists,
   validateRoleName,
   only,
