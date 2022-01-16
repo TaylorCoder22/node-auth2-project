@@ -1,10 +1,10 @@
 const router = require("express").Router();
 const { checkUsernameExists, validateRoleName } = require('./auth-middleware');
 const { JWT_SECRET } = require("../secrets"); // use this secret!
-const User = require('../users/users-model')
+const Users = require('../users/users-model')
 const bcrypt = require('bcryptjs')
-
 const jwt = require('jsonwebtoken')
+
 router.post("/register", validateRoleName, (req, res, next) => {
   /**
     [POST] /api/auth/register { "username": "anna", "password": "1234", "role_name": "angel" }
@@ -20,7 +20,7 @@ router.post("/register", validateRoleName, (req, res, next) => {
   let user = req.body
   const hash = bcrypt.hashSync(req.body.password, 8)
   user.password = hash
-  User.add(user)
+  Users.add(user)
   .then(newUser => {
     res.status(201).json(newUser)
   })
@@ -28,6 +28,18 @@ router.post("/register", validateRoleName, (req, res, next) => {
     res.status(201).json({message: err.message})
   })
 });
+
+function makeToken(user){
+  const payload = {
+    subject: user.user_id,
+    username: user.username,
+    role_name: user.role_name
+  }
+  const options = {
+    expiresIn: '1d'
+  }
+  return jwt.sign(payload, jwtSecret, options)
+}
 
 router.post("/login", checkUsernameExists, (req, res, next) => {
   /**
@@ -50,7 +62,7 @@ router.post("/login", checkUsernameExists, (req, res, next) => {
     }
    */
   let {username, password} = req.body
-  User.findBy({username})
+  Users.findBy({username})
   .then(([user]) => {
     if(user && bcrypt.compareSync(password, user.password)){
       const token = makeToken(user)
@@ -63,17 +75,5 @@ router.post("/login", checkUsernameExists, (req, res, next) => {
     res.status(500).json({message: err.message})
   })
 });
-
-function makeToken(user){
-  const payload = {
-    subject: user.user_id,
-    username: user.username,
-    role_name: user.role_name
-  }
-  const options = {
-    expiresIn: '1d'
-  }
-  return jwt.sign(payload, jwtSecret, options)
-}
 
 module.exports = router;

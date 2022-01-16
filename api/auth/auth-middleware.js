@@ -1,6 +1,5 @@
 const { JWT_SECRET } = require("../secrets"); // use this secret!
-const User = require('../users/users-model')
-const jwt = require('jsonwebtoken')
+const Users = require('../users/users-model')
 
 const restricted = (req, res, next) => {
   /*
@@ -18,13 +17,13 @@ const restricted = (req, res, next) => {
 
     Put the decoded token in the req object, to make life easier for middlewares downstream!
   */
- const token = req.headers.authorization
+ const token = req.header.authorization
  if(!token){
-   res.status(401).json({message: 'Token required'})
+   res.status(401).json({message: 'token required'})
  }else{
    jwt.verify(token, JWT_SECRET, (err, decoded) => {
      if(err){
-       res.status(401).json('Token invalid', err.message)
+       res.status(401).json('token invalid', err.message)
      }else{
        req.decodedToken = decoded
        next()
@@ -44,45 +43,33 @@ const only = role_name => (req, res, next) => {
 
     Pull the decoded token from the req object, to avoid verifying it again!
   */
- let decodedToken = req.decodedToken
- console.log(decodedToken)
- if(decodedToken.role_name != role_name){
-   res.status(403).json({message: 'This is not for you'})
- }else{
+ const roleName = req.decodedToken.roleName
+ if(role_name === req.decodedToken.role_name){
    next()
+ }else{
+   next({status: 403, message: 'This is not for you'})
  }
 }
 
-const checkPayload = (req, res, next) => {
-  if(!req.body.username || !req.body.password){
-    res.status(401).json('username and password required')
-  }else{
-    next()
-  }
-}
-
-
 const checkUsernameExists = async (req, res, next) => {
-  /*
+  /*  
     If the username in req.body does NOT exist in the database
     status 401
     {
       "message": "Invalid credentials"
     }
   */
- const {username} = req.body 
- Users.findBy({username})
- .then(resp => {
-   if(!resp.length < 1){
-     res.status(401).json({message: 'Invalid credentials'})
+ try{
+   const [user] = await Users.findBy({username: req.body.username})
+   if(!user){
+     next({status: 422, message: 'Invalid credentials'})
    }else{
-     req.user = resp[0]
+     req.user = user
      next()
    }
- })
- .catch(err => {
-   res.status(500).json({message: err.message})
- })
+ }catch(err){
+   next(err)
+ }
 }
 
 
@@ -120,7 +107,6 @@ const validateRoleName = (req, res, next) => {
 
 module.exports = {
   restricted,
-  checkPayload,
   checkUsernameExists,
   validateRoleName,
   only,
